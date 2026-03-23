@@ -27,9 +27,17 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
+function isIOS(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
 export async function exportReceiptsToPDF(
   receipts: Receipt[],
   areaMap: Map<string, Area>,
+  targetWindow?: Window | null,
 ): Promise<void> {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const today = formatDate(new Date())
@@ -155,5 +163,20 @@ export async function exportReceiptsToPDF(
   }
 
   const filename = `kvitton-${new Date().toISOString().split('T')[0]}.pdf`
-  pdf.save(filename)
+
+  if (targetWindow) {
+    // iOS: use the pre-opened window (opened synchronously before async work)
+    const blob = pdf.output('blob')
+    const url = URL.createObjectURL(blob)
+    targetWindow.location.href = url
+    setTimeout(() => URL.revokeObjectURL(url), 30_000)
+  } else if (isIOS()) {
+    // iOS fallback if no pre-opened window available
+    const blob = pdf.output('blob')
+    const url = URL.createObjectURL(blob)
+    window.location.href = url
+    setTimeout(() => URL.revokeObjectURL(url), 30_000)
+  } else {
+    pdf.save(filename)
+  }
 }

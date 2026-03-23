@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Search, Receipt as ReceiptIcon, CheckCircle2, Circle, FileDown, X } from 'lucide-react'
 import { db } from '../db/database'
 import ReceiptCard from '../components/ReceiptCard'
-const exportReceiptsToPDF = async (...args: Parameters<typeof import('../utils/pdfExport').exportReceiptsToPDF>) => {
-  const { exportReceiptsToPDF: fn } = await import('../utils/pdfExport')
-  return fn(...args)
-}
 import type { Area } from '../types'
+
+function isIOS(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
 
 export default function Receipts() {
   const [search, setSearch] = useState('')
@@ -15,6 +18,14 @@ export default function Receipts() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [exporting, setExporting] = useState(false)
+
+  // Pre-load PDF module as soon as selection mode activates,
+  // so the module is cached before the user taps export
+  useEffect(() => {
+    if (selectionMode) {
+      import('../utils/pdfExport')
+    }
+  }, [selectionMode])
 
   const areas = useLiveQuery(() => db.areas.toArray())
 
@@ -50,10 +61,18 @@ export default function Receipts() {
   const handleExport = async () => {
     if (selected.size === 0 || !receipts) return
     setExporting(true)
+
+    // iOS Safari blocks downloads triggered after async work.
+    // Open the target window synchronously NOW (within the tap gesture),
+    // then navigate it to the blob URL once the PDF is ready.
+    const targetWindow = isIOS() ? window.open('', '_blank') : null
+
     try {
       const toExport = receipts.filter((r) => selected.has(r.id))
-      await exportReceiptsToPDF(toExport, areaMap)
+      const { exportReceiptsToPDF } = await import('../utils/pdfExport')
+      await exportReceiptsToPDF(toExport, areaMap, targetWindow)
     } catch (err) {
+      targetWindow?.close()
       console.error('PDF export failed', err)
       alert('Något gick fel vid PDF-exporten. Försök igen.')
     } finally {
