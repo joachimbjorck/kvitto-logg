@@ -1,8 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { PlusCircle, Receipt as ReceiptIcon, FolderOpen, TrendingUp } from 'lucide-react'
+import {
+  PlusCircle,
+  Receipt as ReceiptIcon,
+  FolderOpen,
+  TrendingUp,
+  ShieldAlert,
+  HardDriveDownload,
+} from 'lucide-react'
 import { db } from '../db/database'
 import { formatAmount } from '../utils/imageUtils'
+import { daysSinceLastBackup, getLastBackupDate } from '../utils/backupUtils'
 import ReceiptCard from '../components/ReceiptCard'
 
 export default function Home() {
@@ -20,15 +28,50 @@ export default function Home() {
 
   const areaMap = new Map(areas?.map((a) => [a.id, a]))
 
+  const days = daysSinceLastBackup()
+  const neverBacked = getLastBackupDate() === null
+  const showBackupWarning = neverBacked || (days !== null && days >= 7)
+
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
       <div className="bg-blue-600 text-white px-4 pt-12 pb-10">
-        <h1 className="text-2xl font-bold">Kvitto-logg</h1>
-        <p className="text-blue-200 text-sm mt-1">Dina kvitton, organiserade</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Kvitto-logg</h1>
+            <p className="text-blue-200 text-sm mt-1">Dina kvitton, organiserade</p>
+          </div>
+          <button
+            onClick={() => navigate('/backup')}
+            className="p-2 rounded-xl bg-blue-500 hover:bg-blue-400 transition-colors"
+            title="Säkerhetskopiering"
+          >
+            <HardDriveDownload className="w-5 h-5 text-white" />
+          </button>
+        </div>
       </div>
 
-      <div className="px-4 -mt-5 space-y-5">
+      <div className="px-4 -mt-5 space-y-4">
+        {/* Backup warning */}
+        {showBackupWarning && (
+          <button
+            onClick={() => navigate('/backup')}
+            className="w-full flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-left hover:bg-orange-100 transition-colors"
+          >
+            <ShieldAlert className="w-5 h-5 text-orange-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-orange-800">
+                {neverBacked
+                  ? 'Du har aldrig säkerhetskopierat'
+                  : `Senaste backup för ${days} dagar sedan`}
+              </p>
+              <p className="text-xs text-orange-600 mt-0.5">
+                Tryck för att göra en backup nu
+              </p>
+            </div>
+          </button>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-xl p-3 shadow-sm text-center">

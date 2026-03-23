@@ -5,6 +5,7 @@ import Receipts from './pages/Receipts'
 import AddReceipt from './pages/AddReceipt'
 import Areas from './pages/Areas'
 import ReceiptDetail from './pages/ReceiptDetail'
+import Backup from './pages/Backup'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/kvitton/:id" element={<ReceiptDetail />} />
           <Route path="/lagg-till" element={<AddReceipt />} />
           <Route path="/omraden" element={<Areas />} />
+          <Route path="/backup" element={<Backup />} />
         </Routes>
         <Navigation />
       </div>
